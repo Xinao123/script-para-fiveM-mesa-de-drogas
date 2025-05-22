@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Mesa de Drogas</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="main-container">
+        <div class="inventory-panel">
+            <h2>Inventário</h2>
+            <div id="player-inventory" class="slot-container"></div>
+        </div>
+        <div class="inventory-panel">
+            <h2>Mesa</h2>
+            <div id="mesa-inventory" class="slot-container"></div>
+            <button id="fecharMesa">Fechar</button>
+        </div>
+    </div>
+
+    <div class="modal" id="quantidade-modal">
+        <div class="modal-content">
+            <p id="modal-label"></p>
+            <input type="number" id="modal-quantidade" min="1">
+            <div class="modal-actions">
+                <button id="confirmarQuantidade">Confirmar</button>
+                <button id="cancelarQuantidade">Cancelar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast container -->
+    <div id="toast-container"></div>
+
+    <script src="script.js"></script>
+</body>
+</html>
