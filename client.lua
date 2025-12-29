@@ -509,7 +509,6 @@ AddEventHandler("mesa_droga:remover_npc_para_todos", function(mesaId)
 end)
 
 Citizen.CreateThread(function()
-    -- backup spawn loop desabilitado
 end)
 
 Citizen.CreateThread(function()
