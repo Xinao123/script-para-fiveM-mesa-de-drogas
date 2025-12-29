@@ -1,7 +1,7 @@
 let itemSelecionado = null;
 let quantidadeMaxima = 0;
 
-// Toast helper
+
 function mostrarToast(mensagem, cor = "red") {
     const toastContainer = document.getElementById("toast-container");
     if (!toastContainer) return;
@@ -14,7 +14,7 @@ function mostrarToast(mensagem, cor = "red") {
 function toastErro(msg) { mostrarToast(msg, "red"); }
 function toastSucesso(msg) { mostrarToast(msg, "green"); }
 
-// Evento de mensagem da NUI
+
 window.addEventListener("message", function(event) {
     const data = event.data;
     switch (data.action) {
@@ -29,14 +29,14 @@ window.addEventListener("message", function(event) {
     }
 });
 
-// Fechar painel
+
 document.getElementById("fecharMesa").addEventListener("click", function () {
     fetch(`https://${GetParentResourceName()}/fecharMesa`, {
         method: "POST"
     });
 });
 
-// Confirmar quantidade e enviar droga
+
 document.getElementById("confirmarQuantidade").addEventListener("click", function () {
     const quantidadeInput = document.getElementById("modal-quantidade").value;
     let quantidade = parseInt(quantidadeInput);
@@ -64,10 +64,10 @@ document.getElementById("confirmarQuantidade").addEventListener("click", functio
     }
 });
 
-// Cancelar modal
+
 document.getElementById("cancelarQuantidade").addEventListener("click", fecharModal);
 
-// Modal de quantidade
+
 function abrirModal(item, max) {
     if (!item || typeof item !== "string" || max <= 0) return;
     itemSelecionado = item;
@@ -81,7 +81,7 @@ function fecharModal() {
     document.getElementById("quantidade-modal").style.display = "none";
 }
 
-// Criação de slots visuais (player e mesa)
+
 function createSlotElement(item, qtd, isMesa) {
     if (!item || typeof qtd !== "number" || qtd <= 0) return;
     const slot = document.createElement("div");
@@ -112,7 +112,6 @@ function createSlotElement(item, qtd, isMesa) {
     return slot;
 }
 
-// Atualizar inventário do jogador
 function updatePlayerInventory(playerInventory) {
     const container = document.getElementById("player-inventory");
     container.innerHTML = "";
@@ -123,7 +122,7 @@ function updatePlayerInventory(playerInventory) {
     }
 }
 
-// Atualizar slots da mesa
+
 function updateMesaSlots(mesaInventory) {
     const container = document.getElementById("mesa-inventory");
     container.innerHTML = "";

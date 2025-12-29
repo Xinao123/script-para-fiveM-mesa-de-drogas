@@ -21,7 +21,6 @@ server_scripts {
   'server.lua'
 }
 
--- Lista de eventos seguros para rede
 server_events {
     'mesa_droga:objeto_criado',
     'mesa_droga:criacao_falhou',
