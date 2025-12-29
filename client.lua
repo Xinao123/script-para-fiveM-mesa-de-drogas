@@ -16,363 +16,363 @@ local eventosParaRegistrar = {
     "mesa_droga:solicitar_novo_npc",
     "mesa_droga:spawn_npc_para_todos",
     "mesa_droga:remover_npc_para_todos",
-    "mesa_droga:sync_mesa",
-    "mesa_droga:registro_confirmado",
-    "mesa_droga:remover_mesa",
-    "mesa_droga:recriar_mesa",
-    "mesa_droga:sync_creation_response",
-    "mesa_droga:objeto_criado",
-    "mesa_droga:criacao_falhou",
-    "mesa_droga:sincronizar_mesa",
-    "mesa_droga:validar_mesa",
-    "mesa_droga:atualizar_estado",
-    "mesa_droga:mesa_validada",
-    "mesa_droga:remover_mesa_registrada",
-    "mesa_droga:update_position",
-    "objects:Table",
-    "objects:Adicionar"
-}
+    local Tunnel = module("vrp","lib/Tunnel")
+    local Proxy = module("vrp","lib/Proxy")
+    vRP = Proxy.getInterface("vRP")
 
-for _, evento in ipairs(eventosParaRegistrar) do
-    RegisterNetEvent(evento)
-end
+    local vRPserver = Tunnel.getInterface("vRP")
+    local mesaDroga = {}
+    Tunnel.bindInterface("mesa_droga",mesaDroga)
+    Proxy.addInterface("mesa_droga",mesaDroga)
 
-local emVenda = false
-local mesaInventario = {}
-local mesaAtiva = false
-local mesaCoords = nil
-local mesaEntidade = nil
-local clienteNPC = nil
-local aguardandoCliente = false
-local vendaCooldown = 0
-local npcsSpawnados = {}
-local mesaAtualId = nil
-local ultimoSpawnTime = 0
-local ultimaVenda = 0
-local npcAtivo = false
-local tentativasRecriacao = 0
-local mesaHash = nil
-local mesaHeading = 0.0
-local mesaNetId = nil
-local tentativasValidacao = 0
-local maxTentativasValidacao = 3
-local tempoEntreValidacoes = 1000
-local ultimaValidacao = 0
+    local eventosParaRegistrar = {
+        "mesa_droga:usar",
+        "mesa_droga:guardar_mesa",
+        "mesa_droga:abrir_painel",
+        "mesa_droga:abrir_nui_com_drogas",
+        "mesa_droga:atualizar_droga",
+        "mesa_droga:solicitar_novo_npc",
+        "mesa_droga:spawn_npc_para_todos",
+        "mesa_droga:remover_npc_para_todos",
+        "mesa_droga:sync_mesa",
+        "mesa_droga:registro_confirmado",
+        "mesa_droga:remover_mesa",
+        "mesa_droga:recriar_mesa",
+        "mesa_droga:sync_creation_response",
+        "mesa_droga:objeto_criado",
+        "mesa_droga:criacao_falhou",
+        "mesa_droga:sincronizar_mesa",
+        "mesa_droga:validar_mesa",
+        "mesa_droga:atualizar_estado",
+        "mesa_droga:mesa_validada",
+        "mesa_droga:remover_mesa_registrada",
+        "mesa_droga:update_position",
+        "objects:Table",
+        "objects:Adicionar"
+    }
 
-local MESA_STATES = {
-    NONE = "none",
-    CREATING = "creating",
-    ACTIVE = "active",
-    REMOVING = "removing"
-}
-
-local mesaState = MESA_STATES.NONE
-
-Citizen.CreateThread(function()
-    mesaHash = GetHashKey(Config.MesaModel)
-    RequestModel(mesaHash)
-    while not HasModelLoaded(mesaHash) do 
-        Wait(10) 
+    for _, evento in ipairs(eventosParaRegistrar) do
+        RegisterNetEvent(evento)
     end
-end)
 
-function DwText(Text, Font, x, y, Scale, r, g, b, a)
-    SetTextFont(Font)
-    SetTextScale(Scale, Scale)
-    SetTextColour(r, g, b, a)
-    SetTextOutline()
-    SetTextEntry("STRING")
-    AddTextComponentString(Text)
-    DrawText(x, y)
-end
+    local emVenda = false
+    local mesaInventario = {}
+    local mesaAtiva = false
+    local mesaCoords = nil
+    local mesaEntidade = nil
+    local clienteNPC = nil
+    local aguardandoCliente = false
+    local vendaCooldown = 0
+    local npcsSpawnados = {}
+    local mesaAtualId = nil
+    local ultimoSpawnTime = 0
+    local ultimaVenda = 0
+    local npcAtivo = false
+    local tentativasRecriacao = 0
+    local mesaHash = nil
+    local mesaHeading = 0.0
+    local mesaNetId = nil
+    local tentativasValidacao = 0
+    local maxTentativasValidacao = 3
+    local tempoEntreValidacoes = 1000
+    local ultimaValidacao = 0
 
-function DrawGraphOutline(Object)
-    local Coords = GetEntityCoords(Object)
-    local x, y, z = Coords - GetOffsetFromEntityInWorldCoords(Object, 2.0, 0.0, 0.0),
-        Coords - GetOffsetFromEntityInWorldCoords(Object, 0.0, 2.0, 0.0),
-        Coords - GetOffsetFromEntityInWorldCoords(Object, 0.0, 0.0, 2.0)
-    local x1, x2, y1, y2, z1, z2 = Coords - x, Coords + x, Coords - y, Coords + y, Coords - z, Coords + z
-    DrawLine(x1.x, x1.y, x1.z, x2.x, x2.y, x2.z, 255, 0, 0, 255)
-    DrawLine(y1.x, y1.y, y1.z, y2.x, y2.y, y2.z, 0, 0, 255, 255)
-    DrawLine(z1.x, z1.y, z1.z, z2.x, z2.y, z2.z, 0, 255, 0, 255)
-end
+    local MESA_STATES = {
+        NONE = "none",
+        CREATING = "creating",
+        ACTIVE = "active",
+        REMOVING = "removing"
+    }
 
-local function loadAnimDict(dict)
-    if not HasAnimDictLoaded(dict) then
-        RequestAnimDict(dict)
-        while not HasAnimDictLoaded(dict) do
+    local mesaState = MESA_STATES.NONE
+
+    Citizen.CreateThread(function()
+        mesaHash = GetHashKey(Config.MesaModel)
+        RequestModel(mesaHash)
+        while not HasModelLoaded(mesaHash) do 
+            Wait(10) 
+        end
+    end)
+
+    function DwText(Text, Font, x, y, Scale, r, g, b, a)
+        SetTextFont(Font)
+        SetTextScale(Scale, Scale)
+        SetTextColour(r, g, b, a)
+        SetTextOutline()
+        SetTextEntry("STRING")
+        AddTextComponentString(Text)
+        DrawText(x, y)
+    end
+
+    function DrawGraphOutline(Object)
+        local Coords = GetEntityCoords(Object)
+        local x, y, z = Coords - GetOffsetFromEntityInWorldCoords(Object, 2.0, 0.0, 0.0),
+            Coords - GetOffsetFromEntityInWorldCoords(Object, 0.0, 2.0, 0.0),
+            Coords - GetOffsetFromEntityInWorldCoords(Object, 0.0, 0.0, 2.0)
+        local x1, x2, y1, y2, z1, z2 = Coords - x, Coords + x, Coords - y, Coords + y, Coords - z, Coords + z
+        DrawLine(x1.x, x1.y, x1.z, x2.x, x2.y, x2.z, 255, 0, 0, 255)
+        DrawLine(y1.x, y1.y, y1.z, y2.x, y2.y, y2.z, 0, 0, 255, 255)
+        DrawLine(z1.x, z1.y, z1.z, z2.x, z2.y, z2.z, 0, 255, 0, 255)
+    end
+
+    local function loadAnimDict(dict)
+        if not HasAnimDictLoaded(dict) then
+            RequestAnimDict(dict)
+            while not HasAnimDictLoaded(dict) do
+                Citizen.Wait(10)
+            end
+        end
+    end
+
+    local function loadModel(model)
+        local hash = GetHashKey(model)
+        RequestModel(hash)
+        local startTime = GetGameTimer()
+        while not HasModelLoaded(hash) do
             Citizen.Wait(10)
+            if GetGameTimer() - startTime > 5000 then
+                return false
+            end
         end
-    end
-end
-
-local function verificarValidadeMesa(entidade, netId, coords)
-    if not entidade or not DoesEntityExist(entidade) then
-        print("[mesa_droga] Verificação falhou: entidade não existe")
-        return false
-    end
-
-    if not NetworkGetEntityIsNetworked(entidade) then
-        print("[mesa_droga] Verificação falhou: entidade não está networked")
-        return false
-    end
-
-    if not netId or not NetworkDoesNetworkIdExist(netId) then
-        print("[mesa_droga] Verificação falhou: netId inválido")
-        return false
-    end
-
-    if not NetworkDoesEntityExistWithNetworkId(netId) then
-        print("[mesa_droga] Verificação falhou: netId não corresponde a uma entidade")
-        return false
-    end
-
-    local entityFromNetId = NetworkGetEntityFromNetworkId(netId)
-    if entityFromNetId ~= entidade then
-        print("[mesa_droga] Verificação falhou: inconsistência entre entidade e netId")
-        return false
-    end
-
-    local currentCoords = GetEntityCoords(entidade)
-    if #(currentCoords - coords) > 1.0 then
-        print("[mesa_droga] Verificação falhou: posição incorreta")
-        return false
-    end
-
-    if not NetworkHasControlOfEntity(entidade) then
-        NetworkRequestControlOfEntity(entidade)
-        Wait(500)
-        if not NetworkHasControlOfEntity(entidade) then
-            print("[mesa_droga] Verificação falhou: não foi possível obter controle")
-            return false
-        end
-    end
-
-    return true
-end
-
-function VerificarERepararMesa()
-    if not mesaAtiva or not mesaEntidade then return false end
-    if not DoesEntityExist(mesaEntidade) then return false end
-
-    local netId = NetworkGetNetworkIdFromEntity(mesaEntidade)
-    if not netId or not NetworkDoesNetworkIdExist(netId) then return false end
-
-    if not NetworkHasControlOfEntity(mesaEntidade) then
-        NetworkRequestControlOfEntity(mesaEntidade)
-        Wait(50)
-    end
-
-    if NetworkHasControlOfEntity(mesaEntidade) then
-        SetEntityCoords(mesaEntidade, mesaCoords.x, mesaCoords.y, mesaCoords.z, false, false, false, false)
-        SetEntityHeading(mesaEntidade, mesaHeading)
-        FreezeEntityPosition(mesaEntidade, true)
-        SetEntityCollision(mesaEntidade, true, true)
-        SetEntityVisible(mesaEntidade, true, false)
         return true
     end
 
-    return false
-end
+    function mesaDroga.ObjectControlling(Model)
+        local GroundZ = 0.0
+        local Aplication = false
+        local ObjectCoords = nil
+        local ObjectHeading = 0.0
+        if loadModel(Model) then
+            local Progress = true
+            local Ped = PlayerPedId()
+            local Heading = GetEntityHeading(Ped)
+            local Coords = GetOffsetFromEntityInWorldCoords(Ped, 0.0, 1.0, 0.0)
+            local NextObject = CreateObject(Model, Coords.x, Coords.y, Coords.z, false, false, false)
+            SetEntityHeading(NextObject, Heading)
+            SetEntityAlpha(NextObject, 175, false)
+            PlaceObjectOnGroundProperly(NextObject)
+            SetEntityCollision(NextObject, false, false)
+            FreezeEntityPosition(NextObject, true)
+            while Progress do
+                local playerPed = PlayerPedId()
+                local playerCoords = GetEntityCoords(playerPed)
+                if #(playerCoords - GetEntityCoords(NextObject)) > 10.0 then
+                    DeleteEntity(NextObject)
+                    return false, nil, nil
+                end
+                DrawGraphOutline(NextObject)
+                DwText("~g~F~w~  CANCELAR", 4, 0.015, 0.62, 0.38, 255, 255, 255, 255)
+                DwText("~g~E~w~  COLOCAR OBJETO", 4, 0.015, 0.65, 0.38, 255, 255, 255, 255)
+                DwText("~y~PAGE UP~w~  PARA CIMA", 4, 0.015, 0.68, 0.38, 255, 255, 255, 255)
+                DwText("~y~PAGE DOWN~w~  PARA BAIXO", 4, 0.015, 0.71, 0.38, 255, 255, 255, 255)
+                DwText("~y~SCROLL UP~w~  GIRA ESQUERDA", 4, 0.015, 0.74, 0.38, 255, 255, 255, 255)
+                DwText("~y~SCROLL DOWN~w~  GIRA DIREITA", 4, 0.015, 0.77, 0.38, 255, 255, 255, 255)
+                DwText("~y~ARROW UP~w~  PARA LONGE", 4, 0.015, 0.80, 0.38, 255, 255, 255, 255)
+                DwText("~y~ARROW DOWN~w~  PARA PERTO", 4, 0.015, 0.83, 0.38, 255, 255, 255, 255)
+                DwText("~y~ARROW LEFT~w~  PARA ESQUERDA", 4, 0.015, 0.86, 0.38, 255, 255, 255, 255)
+                DwText("~y~ARROW RIGHT~w~  PARA DIREITA", 4, 0.015, 0.89, 0.38, 255, 255, 255, 255)
+                if IsControlJustPressed(1, 38) then
+                    ObjectCoords = GetEntityCoords(NextObject)
+                    ObjectHeading = GetEntityHeading(NextObject)
+                    local success, groundZ = GetGroundZFor_3dCoord(ObjectCoords.x, ObjectCoords.y, ObjectCoords.z + 0.1, true)
+                    if success then
+                        ObjectCoords = vector3(ObjectCoords.x, ObjectCoords.y, groundZ)
+                        Aplication = true
+                    else
+                        TriggerEvent("Notify", "vermelho", "Posição inválida.")
+                    end
+                    Progress = false
+                end
+                if IsControlJustPressed(0, 49) then
+                    Progress = false
+                end
+                if IsDisabledControlPressed(1, 10) then
+                    local pos = GetEntityCoords(NextObject)
+                    SetEntityCoords(NextObject, pos.x, pos.y, pos.z + 0.01, false, false, false)
+                end
+                if IsDisabledControlPressed(1, 11) then
+                    local pos = GetEntityCoords(NextObject)
+                    SetEntityCoords(NextObject, pos.x, pos.y, pos.z - 0.01, false, false, false)
+                end
+                if IsDisabledControlPressed(1, 172) then
+                    local pos = GetEntityCoords(NextObject)
+                    local forward = GetEntityForwardVector(playerPed)
+                    SetEntityCoords(NextObject, pos.x + forward.x * 0.01, pos.y + forward.y * 0.01, pos.z, false, false, false)
+                end
+                if IsDisabledControlPressed(1, 173) then
+                    local pos = GetEntityCoords(NextObject)
+                    local forward = GetEntityForwardVector(playerPed)
+                    SetEntityCoords(NextObject, pos.x - forward.x * 0.01, pos.y - forward.y * 0.01, pos.z, false, false, false)
+                end
+                if IsDisabledControlPressed(1, 174) then
+                    local pos = GetEntityCoords(NextObject)
+                    local right = GetEntityRightVector(playerPed)
+                    SetEntityCoords(NextObject, pos.x - right.x * 0.01, pos.y - right.y * 0.01, pos.z, false, false, false)
+                end
+                if IsDisabledControlPressed(1, 175) then
+                    local pos = GetEntityCoords(NextObject)
+                    local right = GetEntityRightVector(playerPed)
+                    SetEntityCoords(NextObject, pos.x + right.x * 0.01, pos.y + right.y * 0.01, pos.z, false, false, false)
+                end
+                if IsControlJustPressed(0, 180) then
+                    SetEntityHeading(NextObject, GetEntityHeading(NextObject) + 2.5)
+                end
+                if IsControlJustPressed(0, 181) then
+                    SetEntityHeading(NextObject, GetEntityHeading(NextObject) - 2.5)
+                end
+                Wait(1)
+            end
+            DeleteEntity(NextObject)
+        end
+        return Aplication, ObjectCoords, ObjectHeading
+    end
 
-local function limparMesasProximas(coords, raio)
-    local mesaHash = GetHashKey(Config.MesaModel)
-    local entidadesEncontradas = {}
+    local function limparEstadoMesa()
+        print("[mesa_droga] Limpando estado da mesa")
+        mesaEntidade = nil
+        mesaInventario = {}
+        mesaAtiva = false
+        mesaCoords = nil
+        mesaHeading = nil
+        emVenda = false
+        aguardandoCliente = false
+        npcAtivo = false
+        mesaAtualId = nil
+    end
 
-    local handle, entity = FindFirstObject()
-    local success = true
-    while success do
-        if DoesEntityExist(entity) then
-            local model = GetEntityModel(entity)
-            if model == mesaHash then
-                local entCoords = GetEntityCoords(entity)
-                if #(coords - entCoords) <= raio then
-                    table.insert(entidadesEncontradas, entity)
+    local function removerMesa()
+        print("[mesa_droga] Iniciando processo de remoção da mesa")
+        if mesaEntidade then
+            if DoesEntityExist(mesaEntidade) then
+                print("[mesa_droga] Tentando remover entidade da mesa")
+                if not NetworkHasControlOfEntity(mesaEntidade) then
+                    print("[mesa_droga] Solicitando controle da entidade")
+                    NetworkRequestControlOfEntity(mesaEntidade)
+                    Wait(100)
+                end
+                local netId = NetworkGetNetworkIdFromEntity(mesaEntidade)
+                if netId and netId ~= 0 then
+                    print("[mesa_droga] Configurando migração do netId:", netId)
+                    SetNetworkIdCanMigrate(netId, true)
+                end
+                SetEntityAsMissionEntity(mesaEntidade, true, true)
+                DeleteEntity(mesaEntidade)
+                if DoesEntityExist(mesaEntidade) then
+                    print("[mesa_droga] Falha na primeira tentativa, tentando novamente")
+                    SetEntityCoords(mesaEntidade, 0.0, 0.0, 0.0)
+                    DeleteEntity(mesaEntidade)
                 end
             end
+            mesaEntidade = nil
         end
-        success, entity = FindNextObject(handle)
-    end
-    EndFindObject(handle)
-
-    for _, ent in ipairs(entidadesEncontradas) do
-        if DoesEntityExist(ent) then
-            DeleteEntity(ent)
-            print("[mesa_droga] Mesa próxima removida")
-        end
-    end
-
-    return #entidadesEncontradas
-end
-
-AddEventHandler("mesa_droga:usar", function()
-    if mesaAtiva then
-        TriggerEvent("Notify", "vermelho", "Você já possui uma mesa ativa.")
-        return
-    end
-
-    local success, coords, heading = mesaDroga.ObjectControlling(Config.MesaModel)
-    if not success then
-        TriggerEvent("Notify", "vermelho", "Posicionamento cancelado.")
-        TriggerServerEvent("mesa_droga:devolver_item")
-        return
-    end
-
-    removerMesa()
-
-    local mesaHash = GetHashKey(Config.MesaModel)
-    mesaEntidade = CreateObject(mesaHash, coords.x, coords.y, coords.z, true, true, true)
-    if not mesaEntidade or not DoesEntityExist(mesaEntidade) then
-        TriggerEvent("Notify", "vermelho", "Falha ao criar mesa.")
-        TriggerServerEvent("mesa_droga:devolver_item")
-        return
-    end
-
-    SetEntityAsMissionEntity(mesaEntidade, true, true)
-    PlaceObjectOnGroundProperly(mesaEntidade)
-    SetEntityHeading(mesaEntidade, heading)
-    FreezeEntityPosition(mesaEntidade, true)
-    SetEntityCollision(mesaEntidade, true, true)
-
-    local netId = NetworkGetNetworkIdFromEntity(mesaEntidade)
-    if not netId or netId == 0 then
-        DeleteEntity(mesaEntidade)
-        TriggerEvent("Notify", "vermelho", "NetID inválido.")
-        TriggerServerEvent("mesa_droga:devolver_item")
-        return
-    end
-
-    SetNetworkIdExistsOnAllMachines(netId, true)
-    SetNetworkIdCanMigrate(netId, false)
-
-    mesaInventario = {}
-    mesaAtiva = true
-    mesaCoords = GetEntityCoords(mesaEntidade)
-    mesaHeading = heading
-
-    local data = {
-        object = Config.MesaModel,
-        x = mesaCoords.x,
-        y = mesaCoords.y,
-        z = mesaCoords.z,
-        h = heading,
-        Distance = 25.0,
-        mode = "5",
-        item = "mesa_droga",
-        perm = false
-    }
-
-    TriggerServerEvent("mesa_droga:registrar_objeto", data)
-    TriggerServerEvent("mesa_droga:remover_item")
-end)
-
-AddEventHandler("mesa_droga:guardar_mesa", function()
-    if not mesaAtiva then
-        TriggerEvent("Notify", "vermelho", "Você não tem uma mesa ativa.")
-        return
-    end
-
-    if next(mesaInventario) then
-        TriggerServerEvent("mesa_droga:devolver_drogas", mesaInventario)
-    end
-
-    removerMesa()
-    TriggerServerEvent("mesa_droga:remover_mesa_registrada")
-    TriggerEvent("Notify", "verde", "Mesa guardada com sucesso.")
-end)
-
-AddEventHandler("mesa_droga:abrir_painel", function()
-    if mesaAtiva then
-        SetNuiFocus(true, true)
-        TriggerServerEvent("mesa_droga:solicitar_inventario_drogas")
-    else
-        TriggerEvent("Notify", "vermelho", "Você não tem uma mesa ativa.")
-    end
-end)
-
-AddEventHandler("mesa_droga:abrir_nui_com_drogas", function(data)
-    if not mesaAtiva then return end
-    SetNuiFocus(true, true)
-    SendNUIMessage({ action = "show", mesa = mesaInventario, player = data, visible = true })
-end)
-
-RegisterNUICallback("fecharMesa", function(_, cb)
-    SetNuiFocus(false, false)
-    SendNUIMessage({ action = "hide" })
-    cb("ok")
-end)
-
-RegisterNUICallback("adicionarDroga", function(data, cb)
-    if data.item and data.quantidade then
-        TriggerServerEvent("mesa_droga:adicionar_droga", { item = data.item, quantidade = data.quantidade })
-    end
-    cb("ok")
-end)
-
-AddEventHandler("mesa_droga:atualizar_droga", function(item, tipo, quantidade)
-    quantidade = quantidade or 1
-    if tipo == "add" then
-        mesaInventario[item] = (mesaInventario[item] or 0) + quantidade
-        if not emVenda then
-            SendNUIMessage({ action = "show", mesa = mesaInventario })
-        end
-        if not clienteNPC and not aguardandoCliente then
-            spawnCliente()
-        end
-    elseif tipo == "remove" then
-        mesaInventario[item] = (mesaInventario[item] or 0) - quantidade
-        if mesaInventario[item] <= 0 then mesaInventario[item] = nil end
-        if not emVenda then
-            SendNUIMessage({ action = "show", mesa = mesaInventario })
-        end
-    end
-end)
-
-function spawnCliente()
-    if not mesaAtiva or not next(mesaInventario) then return end
-    if aguardandoCliente or clienteNPC or npcAtivo then return end
-    if GetGameTimer() - ultimoSpawnTime < Config.TempoSpawnNPC then return end
-
-    aguardandoCliente = true
-    ultimoSpawnTime = GetGameTimer()
-    TriggerServerEvent("mesa_droga:solicitar_spawn_npc")
-end
-
-AddEventHandler("mesa_droga:solicitar_novo_npc", function()
-    if clienteNPC and DoesEntityExist(clienteNPC) then
-        DeleteEntity(clienteNPC)
-    end
-    clienteNPC = nil
-    aguardandoCliente = false
-    npcAtivo = false
-
-    if not mesaAtiva then return end
-    if not next(mesaInventario) then return end
-
-    Citizen.SetTimeout(2000, function()
-        if not clienteNPC and not aguardandoCliente and not npcAtivo then
-            spawnCliente()
-        end
-    end)
-end)
-
-AddEventHandler("mesa_droga:spawn_npc_para_todos", function(data)
-    Citizen.CreateThread(function()
-        if npcsSpawnados[data.mesaId] then
-            if DoesEntityExist(npcsSpawnados[data.mesaId]) then
-                DeleteEntity(npcsSpawnados[data.mesaId])
+        print("[mesa_droga] Removendo NPCs")
+        for _, npc in pairs(npcsSpawnados) do
+            if DoesEntityExist(npc) then
+                DeleteEntity(npc)
             end
-            npcsSpawnados[data.mesaId] = nil
-            clienteNPC = nil
         end
-
-        local mesaObj = GetClosestObjectOfType(data.coords.x, data.coords.y, data.coords.z, 3.0, mesaHash, false, false, false)
-        if not mesaObj or not DoesEntityExist(mesaObj) then
-            aguardandoCliente = false
-            npcAtivo = false
-            return
+        npcsSpawnados = {}
+        if clienteNPC and DoesEntityExist(clienteNPC) then
+            DeleteEntity(clienteNPC)
         end
+        clienteNPC = nil
+        print("[mesa_droga] Limpando UI")
+        SetNuiFocus(false, false)
+        SendNUIMessage({ action = "hide" })
+        limparEstadoMesa()
+        print("[mesa_droga] Processo de remoção concluído")
+    end
 
+    Citizen.CreateThread(function()
+        for _, model in ipairs(Config.ModelosClientes) do
+            local hash = GetHashKey(model)
+            RequestModel(hash)
+            while not HasModelLoaded(hash) do Citizen.Wait(10) end
+        end
+        local mesaHash = GetHashKey(Config.MesaModel)
+        RequestModel(mesaHash)
+        while not HasModelLoaded(mesaHash) do Citizen.Wait(10) end
+    end)
+
+    function CriarMesa(coords, heading)
+        if not coords or not heading then 
+            print("[mesa_droga] Coordenadas ou heading inválidos")
+            return false 
+        end
+        if mesaAtiva then
+            print("[mesa_droga] Removendo mesa existente antes de criar nova")
+            TriggerServerEvent("mesa_droga:remover_mesa_registrada")
+            removerMesa()
+            Wait(1000)
+        end
+        if mesaAtiva or mesaEntidade then
+            print("[mesa_droga] Estado inconsistente após limpeza")
+            return false
+        end
+        ClearArea(coords.x, coords.y, coords.z, 3.0, true, false, false, false)
+        Wait(100)
+        local mesaHash = GetHashKey(Config.MesaModel)
+        if not IsModelValid(mesaHash) then
+            print("[mesa_droga] Modelo inválido:", Config.MesaModel)
+            TriggerEvent("Notify", "vermelho", "Modelo da mesa inválido.")
+            return false
+        end
+        RequestModel(mesaHash)
+        local modelTimeout = GetGameTimer() + 5000
+        while not HasModelLoaded(mesaHash) do 
+            Wait(10)
+            if GetGameTimer() > modelTimeout then
+                print("[mesa_droga] Timeout ao carregar modelo")
+                return false
+            end
+        end
+        local object = CreateObject(mesaHash, coords.x, coords.y, coords.z, true, true, false)
+        if not object or not DoesEntityExist(object) then
+            print("[mesa_droga] Falha ao criar objeto")
+            return false
+        end
+        SetEntityAsMissionEntity(object, true, true)
+        SetEntityCollision(object, true, true)
+        PlaceObjectOnGroundProperly(object)
+        FreezeEntityPosition(object, true)
+        SetEntityHeading(object, heading)
+        local criado = false
+        local mesaId = nil
+        local objetoCriadoHandler = AddEventHandler("mesa_droga:objeto_criado", function(id)
+            mesaId = id
+            criado = true
+        end)
+        local criacaoFalhouHandler = AddEventHandler("mesa_droga:criacao_falhou", function(motivo)
+            print("[mesa_droga] Falha na criação:", motivo)
+            criado = false
+        end)
+        TriggerServerEvent("mesa_droga:solicitar_criacao", {
+            model = Config.MesaModel,
+            coords = coords,
+            heading = heading
+        })
+        local timeout = GetGameTimer() + 5000
+        while not criado and GetGameTimer() < timeout do
+            Wait(100)
+        end
+        RemoveEventHandler(objetoCriadoHandler)
+        RemoveEventHandler(criacaoFalhouHandler)
+        if not criado or not mesaId then
+            if DoesEntityExist(object) then
+                DeleteEntity(object)
+            end
+            print("[mesa_droga] Falha ao registrar mesa no servidor")
+            return false
+        end
+        mesaEntidade = object
+        mesaCoords = coords
+        mesaHeading = heading
+        mesaAtiva = true
+        mesaAtualId = mesaId
+        mesaState = MESA_STATES.ACTIVE
+        print("[mesa_droga] Mesa criada com sucesso - ID:", mesaId)
+        return object
+    end
         local modelLoaded = false
         local retryCount = 0
         while not modelLoaded and retryCount < 5 do
