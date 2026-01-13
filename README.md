@@ -1,5 +1,4 @@
 # 💊 Drug Table (vRP) for FiveM
-Status: 🧊 Archived (not maintained)
 
 A simple drug table system for FiveM, built on top of vRP.
 This repository is archived, so expect outdated patterns and possible incompatibilities.
@@ -61,10 +60,8 @@ This repository is archived, so expect outdated patterns and possible incompatib
 ====================================================================
 
 # 🇧🇷 Mesa de Drogas (vRP) para FiveM
-Status: 🧊 Arquivado (sem manutenção)
 
 Sistema simples de mesa de drogas para FiveM, baseado em vRP.
-Este repositório está arquivado, então pode ter padrões antigos e incompatibilidades.
 
 ---
 
